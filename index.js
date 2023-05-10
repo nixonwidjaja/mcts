@@ -6,29 +6,14 @@ const rl = readline.createInterface({
   input: process.stdin
 });
 
-const unirest = require('unirest');
-
-let conv = [0, 0, 0]
-let curr = false;
-const data = [];
+let data = [];
 
 rl.on('line', (line) => {
   const arr = line.split(' ');
-  if (arr.length == 1) {
-    curr = true;
-  }
-  if (arr.length == 3) {
-    for (let i = 0; i < arr.length; i++) {
-      conv[i] = BigNumber(arr[i])
-    }
-  }
-  if (arr.length == 4) {
-    if (curr) data.push(arr);
-    else solve(arr);
-  }
+  data.push(arr);
 });
 
-const solve = (arr) => {
+const solve = (arr, conv) => {
   let c;
   if (arr[2] == 'ETH') c = conv[1];
   else if (arr[2] == 'BTC') c = conv[0];
@@ -39,23 +24,20 @@ const solve = (arr) => {
 }
 
 const getPrice = async () => {
-  const btc = await unirest.get('https://api.coincap.io/v2/rates/bitcoin')
-    .end(function (res) { 
-      if (res.error) throw new Error(res.error); 
-      a =  Number(JSON.parse(res.raw_body).data.rateUsd);
-      console.log(a)
-    });
-  const eth = await unirest.get('https://api.coincap.io/v2/rates/ethereum')
-    .end(function (res) { 
-      if (res.error) throw new Error(res.error); 
-      b = Number(JSON.parse(res.raw_body).data.rateUsd);
-    });
-  const doge = await unirest.get('https://api.coincap.io/v2/rates/dogecoin')
-    .end(function (res) { 
-      if (res.error) throw new Error(res.error); 
-      c = Number(JSON.parse(res.raw_body).data.rateUsd);
-    });
-  console.log(a,b,c)
+  const btc = (await fetch('https://api.coincap.io/v2/rates/bitcoin')).json()
+  const eth = (await fetch('https://api.coincap.io/v2/rates/ethereum')).json()
+  const doge = (await fetch('https://api.coincap.io/v2/rates/dogecoin')).json()
+  let conv = await Promise.all([btc, eth, doge])
+  conv = conv.map(x => x.data.rateUsd)
+  for (let i = 0; i < data.length; i++) {
+    const arr = data[i];
+    if (arr.length == 3) {
+      for (let i = 0; i < arr.length; i++) {
+        conv[i] = BigNumber(arr[i])
+      }
+    }
+    if (arr.length == 4) solve(arr, conv);
+  };
 }
 
-if (curr) getPrice();
+getPrice();
